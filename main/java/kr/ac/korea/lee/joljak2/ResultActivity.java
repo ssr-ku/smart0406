@@ -3,12 +3,10 @@ package kr.ac.korea.lee.joljak2;
 import android.app.Activity;
 import android.content.Intent;
 import android.graphics.Color;
-import android.media.AudioRecord;
 import android.media.MediaPlayer;
-import android.media.MediaRecorder;
+import android.net.Uri;
 import android.os.Bundle;
 import android.os.Environment;
-import android.text.ParcelableSpan;
 import android.text.Spannable;
 import android.text.SpannableString;
 import android.text.Spanned;
@@ -17,25 +15,17 @@ import android.text.style.StrikethroughSpan;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
+import android.widget.ProgressBar;
 import android.widget.TextView;
-
-import java.io.File;
-import java.io.FileDescriptor;
-import java.io.FileInputStream;
 import java.util.ArrayList;
-import java.util.Arrays;
-import kr.ac.korea.lee.joljak2.Keywords;
-
 
 /**
  * Created by lee on 16. 6. 10.
  */
 public class ResultActivity extends Activity {
-
     AudioVisualizerView avv;
     private android.os.Handler handler;
     public static final int REPEAT_INTERVAL = 40;
-    double amplitude = 0;
     private boolean isPlaying;
     MediaPlayer mp;
     int myIndex = 0;
@@ -44,7 +34,12 @@ public class ResultActivity extends Activity {
     int rmsCont = 0;
     float ampl = 0;
     float rms = 0;
-
+    int audiolength = 0;
+    int currentplaytime=0;
+    TextView playtime;
+    TextView duration;
+    ProgressBar progress;
+    String format = "%1$02d";
 
     public class MyIntegers {
         public Integer start;
@@ -61,14 +56,10 @@ public class ResultActivity extends Activity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_result);
         setButtonHandlers();
-        enableButtons(false);
-        eval = (TextView)findViewById(R.id.eval);
+        enableButton(R.id.btnStop, false);
+        eval = (TextView) findViewById(R.id.eval);
         Intent intent = getIntent();
         String htmlBody = intent.getStringExtra("result");
-        int index = 0;
-
-
-
 
         ArrayList<MyIntegers> arkey = new ArrayList<>();
         ArrayList<MyIntegers> arbad = new ArrayList<>();
@@ -92,7 +83,6 @@ public class ResultActivity extends Activity {
             }
         }
         for (String s : Keywords.badword) {
-            String toword = "";
             int start, end;
             if ((start = htmlBody.indexOf(s)) > -1) {
                 end = start + s.length();
@@ -106,7 +96,7 @@ public class ResultActivity extends Activity {
             }
         }
         for (Integer i : modkey) {
-            if(modkey.size() == 0) {
+            if (modkey.size() == 0) {
                 break;
             }
             int start, end;
@@ -116,7 +106,7 @@ public class ResultActivity extends Activity {
 
         }
         for (Integer i : modbad) {
-            if(modbad.size() == 0) {
+            if (modbad.size() == 0) {
                 break;
             }
             int start, end;
@@ -127,26 +117,31 @@ public class ResultActivity extends Activity {
         }
         Spannable span = new SpannableString(htmlBody);
         for (MyIntegers i : arkey) {
-            if(arkey.size() == 0) {
+            if (arkey.size() == 0) {
                 break;
             }
             span.setSpan(new ForegroundColorSpan(Color.rgb(255, 0, 255)), i.start, i.end, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
         }
         for (MyIntegers i : arbad) {
-            if(arbad.size() == 0) {
+            if (arbad.size() == 0) {
                 break;
             }
             span.setSpan(new ForegroundColorSpan(Color.RED), i.start, i.end, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
             span.setSpan(new StrikethroughSpan(), i.start, i.end - "(금기어)".length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
         }
-        TextView tv = (TextView)findViewById(R.id.idid1);
+        TextView tv = (TextView) findViewById(R.id.idid1);
         tv.setText(span);
         tv.setPadding(0, 5, 0, 5);
         //Log.i("ids",Integer.toString(aint.get(index)));
 
-
-
-        avv=(AudioVisualizerView)findViewById(R.id.audio_visualizer);
+        playtime= (TextView)findViewById(R.id.playtime);
+        duration= (TextView)findViewById(R.id.duration);
+        prepareMediaPlayer();
+        audiolength = mp.getDuration() / 1000;
+        duration.setText(""+audiolength/60+":"+String.format(format,audiolength%60));
+        progress=(ProgressBar)findViewById(R.id.playProgress);
+        progress.setMax(mp.getDuration());
+        avv = (AudioVisualizerView) findViewById(R.id.audio_visualizer);
 
         handler = new android.os.Handler();
     }
@@ -154,16 +149,23 @@ public class ResultActivity extends Activity {
     private View.OnClickListener btnClick = new View.OnClickListener() {
         public void onClick(View v) {
             switch (v.getId()) {
-                case R.id.btnStart: {
-                    enableButtons(true);
-                    avv.clear();
-                    startPlaying();
-                    break;
+                case R.id.btnStartPause: {
+                    if (!isPlaying) {
+                        enableButton(R.id.btnStop, true);
+                        ((Button) v).setText(R.string.pause);
+                        startPlaying();
+                        break;
+                    } else if (isPlaying) {
+                        ((Button) v).setText(R.string.play);;
+                        enableButton(R.id.btnStop, false);
+                        pausePlaying();
+                        break;
+                    }
                 }
                 case R.id.btnStop: {
-                    enableButtons(false);
+                    Button btnStartPause = (Button) findViewById(R.id.btnStartPause);
+                    btnStartPause.setText(R.string.play);
                     stopPlaying();
-                    isPlaying = false;
                     break;
                 }
             }
@@ -171,41 +173,24 @@ public class ResultActivity extends Activity {
     };
 
     private void setButtonHandlers() {
-        ((Button) findViewById(R.id.btnStart)).setOnClickListener(btnClick);
+        ((Button) findViewById(R.id.btnStartPause)).setOnClickListener(btnClick);
         ((Button) findViewById(R.id.btnStop)).setOnClickListener(btnClick);
     }
 
     private void enableButton(int id, boolean isEnable) {
         ((Button) findViewById(id)).setEnabled(isEnable);
     }
-    private void enableButton2(int id, boolean isEnable) {
-        ((Button) findViewById(id)).setEnabled(isEnable);
-    }
-
-    private void enableButtons(boolean isRecording) {
-        enableButton(R.id.btnStart, !isRecording);
-        enableButton(R.id.btnStop, isRecording);
-    }
 
     private void startPlaying() {
-        myIndex = 0;
-        rms = 0;
-        rmsCont = 0;
-        try {
-            mp = new MediaPlayer();
-            FileInputStream fis = new FileInputStream(new File(Environment.getExternalStorageDirectory().getAbsolutePath() + "/record.wav"));
-            FileDescriptor fd = fis.getFD();
-            mp.setDataSource(fd);
-            mp.prepare();
-            mp.start();
-            isPlaying = true;
-        }catch (Exception e) {
-            e.printStackTrace();
+        if (mp == null) {
+            avv.clear();
+            prepareMediaPlayer();
         }
+
+        mp.start();
+        isPlaying = true;
+
         handler.post(updateVisualizer);
-        //ar.clear();
-
-
     }
 
     Runnable updateVisualizer = new Runnable() {
@@ -213,17 +198,22 @@ public class ResultActivity extends Activity {
         public void run() {
             if (isPlaying) // if we are playing
             {
-                if(myIndex == ar.size()) {
+                currentplaytime=mp.getCurrentPosition()/1000;
+                playtime.setText(""+currentplaytime/60+":"+String.format(format,currentplaytime%60));
+                progress.setProgress(mp.getCurrentPosition());
+                if (myIndex == ar.size()) {
+                    Button btnStartPause = (Button) findViewById(R.id.btnStartPause);
+                    btnStartPause.setText(R.string.play);
                     stopPlaying();
                 } else {
                     avv.addAmplitude(ar.get(myIndex));
                     ampl = ar.get(myIndex);
-                    if(rmsCont < 25) {
-                        rms += ampl*ampl;
+                    if (rmsCont < 25) {
+                        rms += ampl * ampl;
                         rmsCont++;
                     } else {
-                        rms += ampl*ampl;
-                        rms = (float)Math.sqrt((double)rms);
+                        rms += ampl * ampl;
+                        rms = (float) Math.sqrt((double) rms);
                         if (rms < 500) {
                             eval.setText("목소리가 인식되지 않습니다.");
                         } else if (rms < 2500) {
@@ -249,14 +239,49 @@ public class ResultActivity extends Activity {
 
     private void stopPlaying() {
         // stops the recording activity
-        if (null != mp) {
+        if (mp != null) {
             isPlaying = false;
+
+            playtime.setText("0:00");
+
             mp.stop();
             mp.release();
             mp = null;
         }
-        enableButtons(false);
-
     }
 
+    private void pausePlaying() {
+        if (isPlaying) {
+            isPlaying = false;
+            mp.pause();
+        }
+    }
+
+    private void prepareMediaPlayer() {
+        myIndex = 0;
+        rms = 0;
+        rmsCont = 0;
+
+        try {
+            mp = MediaPlayer.create(this, Uri.parse(Environment.getExternalStorageDirectory().getAbsolutePath() + "/record.wav"));
+            //FileInputStream fis = new FileInputStream(new File(Environment.getExternalStorageDirectory().getAbsolutePath() + "/record.wav"));
+            //FileDescriptor fd = fis.getFD();
+            mp.prepare();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    @Override
+    public void onBackPressed() {
+        if (isPlaying) {
+            if (mp != null) {
+                isPlaying = false;
+                mp.stop();
+                mp.release();
+                mp = null;
+            }
+        }
+        super.onBackPressed();
+    }
 }
