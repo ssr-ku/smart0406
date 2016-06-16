@@ -10,34 +10,58 @@
     android:paddingRight="@dimen/activity_horizontal_margin"
     android:paddingTop="@dimen/activity_vertical_margin"
     tools:context="kr.ac.korea.lee.joljak2.ResultActivity">
+
     <ScrollView
         android:layout_width="match_parent"
-        android:layout_height="119dp"
+        android:layout_height="0dp"
+        android:layout_weight="2"
         android:orientation="vertical">
 
-    <!--<android.support.v4.widget.NestedScrollView
-        android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_weight="1">
-
-    </android.support.v4.widget.NestedScrollView>-->
-    <TextView
-        android:id="@+id/idid1"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="" />
+        <TextView
+            android:id="@+id/idid1"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="" />
     </ScrollView>
-    <Button
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="start"
-        android:id="@+id/btnStart" />
 
-    <Button
+    <LinearLayout
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="stop"
-        android:id="@+id/btnStop" />
+        android:orientation="horizontal"
+        android:padding="4dp">
+
+        <Button
+            android:id="@+id/btnStartPause"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/play" />
+
+        <Button
+            android:id="@+id/btnStop"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/stop" />
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:id="@+id/playtime"
+            android:text="0:00"/>
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="/"/>
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:id="@+id/duration"
+            android:text=""/>
+    </LinearLayout>
+    <ProgressBar
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:id="@+id/playProgress"
+        style="@android:style/Widget.ProgressBar.Horizontal"
+        />
 
     <TextView
         android:id="@+id/eval"
@@ -46,10 +70,8 @@
         android:text="voice loudness evaluation here" />
 
     <kr.ac.korea.lee.joljak2.AudioVisualizerView
+        android:id="@+id/audio_visualizer"
         android:layout_width="match_parent"
-        android:layout_height="300dp"
-        android:id="@+id/audio_visualizer"/>
-
-
-
+        android:layout_height="0dp"
+        android:layout_weight="3"/>
 </LinearLayout>
